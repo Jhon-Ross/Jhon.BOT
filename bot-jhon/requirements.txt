@@ -3,6 +3,7 @@ requests
 python-dotenv
 qrcode[pil]
 PyNaCl
+yt-dlp
 asyncio
 pip==25.0.1
 

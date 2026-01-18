@@ -19,6 +19,10 @@ bot-jhon/.env
 errors.log
 bot-jhon/errors.log
 
+# Binaries
+ffmpeg.exe
+bot-jhon/ffmpeg.exe
+
 # OS
 .DS_Store
 Thumbs.db

@@ -86,6 +86,7 @@ async def on_interaction(interaction: discord.Interaction):
 # Configurações do yt_dlp para baixar/streamar áudio do YouTube
 ytdl_format_options = {
     'format': 'bestaudio/best',
+    'noplaylist': True,
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'mp3',
@@ -513,6 +514,9 @@ async def comandos(ctx):
 
 3️⃣ **.palavra**  
    📖 *Receba uma palavra do Senhor para o seu dia! Uma mensagem de fé e esperança para te inspirar.*
+
+4️⃣ **.musica [link]**
+   🎵 *Toca uma música do YouTube no canal de voz em que você está conectado.*
 
 ✨ *Por enquanto esses são os comandos disponíveis, mas fique ligado... em breve teremos mais utilidades!*
 
