@@ -1,0 +1,10 @@
+discord.py
+requests
+python-dotenv
+qrcode[pil]
+PyNaCl
+asyncio
+pip==25.0.1
+
+
+

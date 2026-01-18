@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+.venv/
+env/
+bot-jhon/venv/
+
+# Environment Variables (IMPORTANT)
+.env
+*.env
+bot-jhon/.env
+
+# Logs
+*.log
+errors.log
+bot-jhon/errors.log
+
+# OS
+.DS_Store
+Thumbs.db
