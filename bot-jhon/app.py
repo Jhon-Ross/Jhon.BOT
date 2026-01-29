@@ -1,4 +1,5 @@
 import os
+import sys
 import discord
 import subprocess
 import logging
@@ -18,17 +19,46 @@ from dotenv import load_dotenv
 # ==========================
 # Carregar variáveis de ambiente
 load_dotenv()
+
+def get_env_int(var_name):
+    value = os.getenv(var_name)
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        print(f"[ERRO] A variavel de ambiente '{var_name}' deve ser um numero inteiro. Valor atual: '{value}'")
+        return None
+
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 BIBLE_ID = os.getenv("BIBLE_ID")
 API_KEY = os.getenv("API_KEY")
-COMUNIDADE_ID = int(os.getenv("COMUNIDADE_ID"))
-CANAL_LOG_ID = int(os.getenv("CANAL_LOG_ID"))
-VISITANTE_ID = int(os.getenv("VISITANTE_ID"))
-WELCOME_CHANNEL_ID = int(os.getenv("WELCOME_CHANNEL_ID"))
-RULES_CHANNEL_ID = int(os.getenv("RULES_CHANNEL_ID"))
-VERIFICAR_ID = int(os.getenv("VERIFICAR_ID"))
-GUILD_ID = int(os.getenv("GUILD_ID"))
-BOAS_VINDAS_ID = int(os.getenv("BOAS_VINDAS_ID"))
+
+# Variaveis obrigatorias (IDs)
+COMUNIDADE_ID = get_env_int("COMUNIDADE_ID")
+CANAL_LOG_ID = get_env_int("CANAL_LOG_ID")
+VISITANTE_ID = get_env_int("VISITANTE_ID")
+WELCOME_CHANNEL_ID = get_env_int("WELCOME_CHANNEL_ID")
+RULES_CHANNEL_ID = get_env_int("RULES_CHANNEL_ID")
+VERIFICAR_ID = get_env_int("VERIFICAR_ID")
+GUILD_ID = get_env_int("GUILD_ID")
+BOAS_VINDAS_ID = get_env_int("BOAS_VINDAS_ID")
+
+# Verifica se variaveis criticas estao faltando
+missing_vars = []
+if not DISCORD_TOKEN: missing_vars.append("DISCORD_TOKEN")
+if not COMUNIDADE_ID: missing_vars.append("COMUNIDADE_ID")
+if not GUILD_ID: missing_vars.append("GUILD_ID")
+
+if missing_vars:
+    print("\n" + "="*50)
+    print(" [ERRO DE CONFIGURACAO] ")
+    print(" As seguintes variaveis estao faltando ou invalidas no arquivo .env:")
+    for var in missing_vars:
+        print(f"  - {var}")
+    print("\n Por favor, edite o arquivo .env na pasta 'bot-jhon' e adicione os valores.")
+    print("="*50 + "\n")
+    # Nao sai imediatamente para permitir que funcoes auxiliares rodem, mas o bot nao vai iniciar o run()
 
 # Configuração do bot e intents necessários
 intents = discord.Intents.default()
@@ -69,12 +99,6 @@ class PersistentView(View):
         )
 
 # Evento chamado sempre que existe uma interação (ex.: clique em botão)
-@bot.event
-async def on_interaction(interaction: discord.Interaction):
-    if interaction.data.get("custom_id") == "verificacao_botao":
-        await handle_verification(interaction)
-
-# Evento de interação duplicado para o botão de verificação
 @bot.event
 async def on_interaction(interaction: discord.Interaction):
     if interaction.data.get("custom_id") == "verificacao_botao":
@@ -429,7 +453,7 @@ def get_random_verse():
         headers = {"api-key": API_KEY}
 
         # Buscar livros da Bíblia
-        books_url = f"https://api.scripture.api.bible/v1/bibles/{BIBLE_ID}/books"
+        books_url = f"https://rest.api.bible/v1/bibles/{BIBLE_ID}/books"
         response = requests.get(books_url, headers=headers)
         response.raise_for_status()
         books = response.json().get("data", [])
@@ -440,7 +464,7 @@ def get_random_verse():
         random_book = random.choice(books)
 
         # Buscar capítulos do livro
-        chapters_url = f"https://api.scripture.api.bible/v1/bibles/{BIBLE_ID}/books/{random_book['id']}/chapters"
+        chapters_url = f"https://rest.api.bible/v1/bibles/{BIBLE_ID}/books/{random_book['id']}/chapters"
         chapters_response = requests.get(chapters_url, headers=headers)
         chapters_response.raise_for_status()
         chapters = chapters_response.json().get("data", [])
@@ -451,7 +475,7 @@ def get_random_verse():
         random_chapter = random.choice(chapters)
 
         # Buscar versículos do capítulo
-        verses_url = f"https://api.scripture.api.bible/v1/bibles/{BIBLE_ID}/chapters/{random_chapter['id']}/verses"
+        verses_url = f"https://rest.api.bible/v1/bibles/{BIBLE_ID}/chapters/{random_chapter['id']}/verses"
         verses_response = requests.get(verses_url, headers=headers)
         verses_response.raise_for_status()
         verses = verses_response.json().get("data", [])
@@ -459,8 +483,9 @@ def get_random_verse():
             return f"❌ O capítulo '{random_chapter['reference']}' não contém versículos suficientes para retornar dois."
 
         # Ordenar versículos por sequência e selecionar dois consecutivos
+        # Fix: Tratar referências com intervalos (ex: '20-21') pegando apenas o primeiro número
         sorted_verses = sorted(verses, key=lambda x: int(
-            x["reference"].split(":")[-1]))
+            x["reference"].split(":")[-1].split("-")[0]))
         start_index = random.randint(0, len(sorted_verses) - 2)
         selected_verses = sorted_verses[start_index:start_index + 2]
 
@@ -468,7 +493,7 @@ def get_random_verse():
         references = []
         for verse in selected_verses:
             # Buscar o conteúdo de cada versículo
-            verse_url = f"https://api.scripture.api.bible/v1/bibles/{BIBLE_ID}/verses/{verse['id']}"
+            verse_url = f"https://rest.api.bible/v1/bibles/{BIBLE_ID}/verses/{verse['id']}"
             verse_response = requests.get(verse_url, headers=headers)
             verse_response.raise_for_status()
             verse_data = verse_response.json().get("data", {})
@@ -599,7 +624,11 @@ async def on_ready():
 
 # Ponto de entrada do script: valida variáveis e inicia o bot
 if __name__ == "__main__":
-    if not API_KEY or not DISCORD_TOKEN:
-        print("❌ API_KEY ou DISCORD_TOKEN não definidos.")
+    if missing_vars:
+        print("❌ Bot nao iniciado devido a falta de variaveis de ambiente.")
+        sys.exit(1)
+    
+    if not DISCORD_TOKEN:
+        print("❌ DISCORD_TOKEN não definido.")
     else:
         bot.run(DISCORD_TOKEN)
