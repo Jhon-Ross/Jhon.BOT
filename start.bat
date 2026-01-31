@@ -106,7 +106,7 @@ echo  [LOGS] Acompanhe abaixo as mensagens do sistema:
 echo  ------------------------------------------------------
 
 :: Executa usando explicitamente o python do venv
-".\venv\Scripts\python.exe" app.py
+".\venv\Scripts\python.exe" main.py
 
 :: ==========================================
 :: TRATAMENTO DE ERRO DE EXECUCAO

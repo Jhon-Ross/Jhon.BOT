@@ -132,6 +132,42 @@ ffmpeg_options = {
 }
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
+# Dicionário para armazenar a fila de músicas por servidor (Guild ID -> Lista de Músicas)
+music_queues = {}
+# Dicionário para armazenar a música atual (Guild ID -> Título)
+current_song = {}
+
+def get_queue(ctx):
+    if ctx.guild.id not in music_queues:
+        music_queues[ctx.guild.id] = []
+    return music_queues[ctx.guild.id]
+
+def play_next(ctx):
+    queue = get_queue(ctx)
+    if len(queue) > 0:
+        # Pega a próxima música da fila
+        next_url = queue.pop(0)
+        
+        # Função assíncrona para preparar e tocar o áudio
+        async def play_async():
+            try:
+                if ctx.voice_client:
+                    player = await YTDLSource.from_url(next_url, loop=bot.loop, stream=True)
+                    current_song[ctx.guild.id] = player.title # Salva o título da música atual
+                    ctx.voice_client.play(player, after=lambda e: play_next(ctx))
+                    await ctx.send(f"🎵 Tocando agora: **{player.title}**")
+            except Exception as e:
+                print(f"Erro ao tocar próxima música: {e}")
+                play_next(ctx) # Tenta a próxima se der erro
+
+        # Agenda a execução da função assíncrona
+        asyncio.run_coroutine_threadsafe(play_async(), bot.loop)
+    else:
+        # Se a fila acabou, limpa a música atual
+        if ctx.guild.id in current_song:
+            del current_song[ctx.guild.id]
+        pass
+
 
 # Fonte de áudio que integra yt_dlp com o FFmpeg para tocar música
 class YTDLSource(discord.PCMVolumeTransformer):
@@ -166,11 +202,22 @@ async def play(ctx, url: str):
         else:
             vc = ctx.voice_client
 
-        async with ctx.typing():
-            player = await YTDLSource.from_url(url, loop=bot.loop, stream=True)
-            vc.play(player, after=lambda e: print(
-                f'Erro ao tocar: {e}') if e else None)
-            await ctx.send(f"Tocando agora: **{player.title}**")
+        # Se já estiver tocando, adiciona à fila
+        if vc.is_playing() or vc.is_paused():
+            queue = get_queue(ctx)
+            queue.append(url)
+            
+            # Tenta pegar o título apenas para mostrar na mensagem (opcional, pode deixar o link)
+            # Para ser rápido, apenas avisa que foi adicionado.
+            await ctx.send(f"📝 Música adicionada à fila! (Posição: {len(queue)})")
+        else:
+            # Se não estiver tocando, toca imediatamente
+            async with ctx.typing():
+                player = await YTDLSource.from_url(url, loop=bot.loop, stream=True)
+                current_song[ctx.guild.id] = player.title # Salva o título da música atual
+                vc.play(player, after=lambda e: play_next(ctx))
+                await ctx.send(f"🎵 Tocando agora: **{player.title}**")
+
     except asyncio.TimeoutError:
         await ctx.send("Não foi possível conectar ao canal de voz. Verifique a conexão do bot ou tente novamente.")
     except discord.ClientException as e:
@@ -178,6 +225,69 @@ async def play(ctx, url: str):
     except Exception as e:
         await ctx.send("Erro inesperado ao tentar tocar música.")
         print(f"Erro: {e}")
+
+
+@bot.command(name='pular')
+async def skip(ctx):
+    if ctx.voice_client and ctx.voice_client.is_playing():
+        ctx.voice_client.stop() # Isso dispara o 'after' do play(), que chama play_next()
+        await ctx.send("⏭️ Música pulada!")
+    else:
+        await ctx.send("❌ Não há música tocando para pular.")
+
+
+@bot.command(name='fila')
+async def queue_list(ctx):
+    queue = get_queue(ctx)
+    if len(queue) == 0:
+        await ctx.send("📭 A fila de músicas está vazia.")
+    else:
+        # Mostra apenas os links ou tenta formatar bonitinho (aqui mostraremos links/texto simplificado)
+        lista = "\n".join([f"{i+1}. {url}" for i, url in enumerate(queue[:10])]) # Limita a 10 itens
+        if len(queue) > 10:
+            lista += f"\n... e mais {len(queue)-10} músicas."
+        
+        embed = discord.Embed(
+            title="🎶 Fila de Reprodução",
+            description=lista,
+            color=discord.Color.purple()
+        )
+        await ctx.send(embed=embed)
+
+
+@bot.command(name='tocando')
+async def now_playing(ctx):
+    if ctx.guild.id in current_song:
+        await ctx.send(f"🎵 **Tocando agora:** {current_song[ctx.guild.id]}")
+    else:
+        await ctx.send("❌ Nenhuma música tocando no momento.")
+
+
+@bot.command(name='pausar')
+async def pause(ctx):
+    if ctx.voice_client and ctx.voice_client.is_playing():
+        ctx.voice_client.pause()
+        await ctx.send("⏸️ Música pausada.")
+    else:
+        await ctx.send("❌ Nenhuma música está tocando no momento.")
+
+
+@bot.command(name='continuar')
+async def resume(ctx):
+    if ctx.voice_client and ctx.voice_client.is_paused():
+        ctx.voice_client.resume()
+        await ctx.send("▶️ Música retomada.")
+    else:
+        await ctx.send("❌ A música não está pausada.")
+
+
+@bot.command(name='parar')
+async def stop(ctx):
+    if ctx.voice_client:
+        await ctx.voice_client.disconnect()
+        await ctx.send("🛑 Música parada e desconectado do canal de voz.")
+    else:
+        await ctx.send("❌ O bot não está conectado a um canal de voz.")
 
 # Lógica principal do botão de verificação: troca cargo de visitante para comunidade
 async def handle_verification(interaction):
@@ -271,6 +381,10 @@ async def send_log_message(content=None, embed=None):
 async def on_member_join(member):
     channel = bot.get_channel(WELCOME_CHANNEL_ID)
     if channel:
+        if not hasattr(channel, 'send'):
+            logging.error(f"Erro de Configuração: O canal de boas-vindas (ID: {WELCOME_CHANNEL_ID}) não é um canal de texto (provavelmente é uma Categoria ou Canal de Voz). Verifique o .env!")
+            return
+
         rules_channel = bot.get_channel(RULES_CHANNEL_ID)
         verificar_channel = bot.get_channel(VERIFICAR_ID)
 
@@ -296,12 +410,15 @@ async def on_member_join(member):
 
     visitante_role = discord.utils.get(member.guild.roles, id=VISITANTE_ID)
     if visitante_role:
-        await member.add_roles(visitante_role)
-        logging.info(
-            f"Novo membro {member.name} recebeu o cargo {visitante_role.name}.")
+        try:
+            await member.add_roles(visitante_role)
+            logging.info(f"Novo membro {member.name} recebeu o cargo {visitante_role.name}.")
+        except discord.Forbidden:
+            logging.error(f"PERMISSÃO NEGADA: O bot não tem permissão para adicionar o cargo '{visitante_role.name}'. Verifique a hierarquia de cargos!")
+        except Exception as e:
+            logging.error(f"Erro ao adicionar cargo: {e}")
     else:
-        logging.error(
-            f"Erro: O cargo com o ID '{VISITANTE_ID}' não foi encontrado no servidor.")
+        logging.error(f"Erro: O cargo com o ID '{VISITANTE_ID}' não foi encontrado no servidor.")
 
     await update_channel_member_count()
     logging.info(f"Membro {member.name} entrou no servidor.")
@@ -553,6 +670,14 @@ async def comandos(ctx):
 4️⃣ **.musica [link]**
    🎵 *Toca uma música do YouTube no canal de voz em que você está conectado.*
 
+5️⃣ **Controle de Música:**
+   🎵 **.tocando** - *Mostra o nome da música atual.*
+   ⏸️ **.pausar** - *Pausa a música atual.*
+   ▶️ **.continuar** - *Retoma a música pausada.*
+   ⏭️ **.pular** - *Pula para a próxima música da fila.*
+   📝 **.fila** - *Mostra a lista de músicas em espera.*
+   🛑 **.parar** - *Para a música e desconecta o bot.*
+
 ✨ *Por enquanto esses são os comandos disponíveis, mas fique ligado... em breve teremos mais utilidades!*
 
 📌 *Use o comando "." antes de cada comando para interagir comigo!* 
@@ -615,6 +740,7 @@ async def limpar(ctx, num_messages: int = 10):
 
     deleted = await ctx.channel.purge(limit=num_messages)
     await ctx.reply(f"✅ {len(deleted)} mensagens foram excluídas.")
+
 
 # ==========================
 # SEÇÃO: CICLO DE VIDA DO BOT
