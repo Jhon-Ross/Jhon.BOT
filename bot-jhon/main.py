@@ -28,7 +28,8 @@ class JhonBot(commands.Bot):
             'cogs.events',
             'cogs.utils',
             'cogs.admin',
-            'cogs.music'
+            'cogs.music',
+            'cogs.ai'
         ]
 
         for ext in initial_extensions:
