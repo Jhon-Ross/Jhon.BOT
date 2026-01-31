@@ -45,14 +45,15 @@ class JhonBot(commands.Bot):
             print(f"🔄 Slash Commands Globais sincronizados: {len(synced)} comandos.")
 
             # Limpa comandos antigos específicos do servidor (Guild) para evitar duplicatas
-            if GUILD_ID:
-                try:
-                    guild_obj = discord.Object(id=int(GUILD_ID))
-                    self.tree.clear_commands(guild=guild_obj)
-                    await self.tree.sync(guild=guild_obj)
-                    print(f"🧹 Comandos antigos do servidor ({GUILD_ID}) foram limpos.")
-                except Exception as e:
-                    print(f"⚠️ Aviso: Não foi possível limpar comandos do servidor: {e}")
+            # (Desativado conforme solicitado, pois já foi executado uma vez)
+            # if GUILD_ID:
+            #     try:
+            #         guild_obj = discord.Object(id=int(GUILD_ID))
+            #         self.tree.clear_commands(guild=guild_obj)
+            #         await self.tree.sync(guild=guild_obj)
+            #         print(f"🧹 Comandos antigos do servidor ({GUILD_ID}) foram limpos.")
+            #     except Exception as e:
+            #         print(f"⚠️ Aviso: Não foi possível limpar comandos do servidor: {e}")
 
         except Exception as e:
             print(f"❌ Falha ao sincronizar comandos: {e}")

@@ -59,12 +59,12 @@ class Eventos(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f"✔️ Bot {self.bot.user.name} está online e pronto! (Sistema Modular)")
+        print(f"✔️ Bot {self.bot.user.name} está online e pronto!")
         # Log de inicialização
         for guild in self.bot.guilds:
             channel = discord.utils.get(guild.text_channels, id=CANAL_LOG_ID)
             if channel:
-                await channel.send("🚀 O bot foi iniciado com sucesso! (Sistema Modular)")
+                await channel.send("🚀 O bot foi iniciado com sucesso!")
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
