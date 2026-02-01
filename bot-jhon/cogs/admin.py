@@ -7,8 +7,11 @@ class Admin(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="limpar", description="Apaga mensagens do canal.")
-    @app_commands.describe(quantidade="Número de mensagens para apagar (1-100)")
-    async def limpar(self, interaction: discord.Interaction, quantidade: int = 10):
+    @app_commands.describe(
+        quantidade="Número de mensagens para apagar (1-100)",
+        apenas_recentes="Apagar apenas mensagens recentes (< 14 dias) para evitar lentidão/erros?"
+    )
+    async def limpar(self, interaction: discord.Interaction, quantidade: int = 10, apenas_recentes: bool = False):
         if not interaction.user.guild_permissions.manage_messages:
             await interaction.response.send_message("❌ Você não tem permissão para usar este comando.", ephemeral=True)
             return
@@ -18,8 +21,17 @@ class Admin(commands.Cog):
             return
 
         await interaction.response.defer(ephemeral=True) # Defer porque purge pode demorar um pouco
-        deleted = await interaction.channel.purge(limit=quantidade)
-        await interaction.followup.send(f"✅ {len(deleted)} mensagens foram excluídas.")
+        
+        def check(msg):
+            if apenas_recentes:
+                diff = discord.utils.utcnow() - msg.created_at
+                return diff.days < 14
+            return True
+
+        deleted = await interaction.channel.purge(limit=quantidade, check=check)
+        
+        msg_extra = " (ignorando antigas)" if apenas_recentes else ""
+        await interaction.followup.send(f"✅ {len(deleted)} mensagens foram excluídas{msg_extra}.")
 
 async def setup(bot):
     await bot.add_cog(Admin(bot))

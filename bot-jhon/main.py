@@ -51,12 +51,12 @@ class JhonBot(commands.Bot):
             if GUILD_ID:
                 try:
                     guild_obj = discord.Object(id=int(GUILD_ID))
-                    # Copia os comandos globais para o servidor para atualização imediata
-                    self.tree.copy_global_to(guild=guild_obj)
+                    # Limpa os comandos da guilda para garantir que apenas os globais sejam exibidos
+                    self.tree.clear_commands(guild=guild_obj)
                     await self.tree.sync(guild=guild_obj)
-                    print(f"🧹 Comandos sincronizados com o servidor ({GUILD_ID}) para acesso imediato.")
+                    print(f"🧹 Comandos da guilda ({GUILD_ID}) limpos para evitar duplicação (usando apenas globais).")
                 except Exception as e:
-                    print(f"⚠️ Aviso: Não foi possível sincronizar comandos do servidor: {e}")
+                    print(f"⚠️ Aviso: Não foi possível limpar comandos do servidor: {e}")
 
         except Exception as e:
             print(f"❌ Falha ao sincronizar comandos: {e}")
