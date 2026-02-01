@@ -44,10 +44,6 @@ class Utilitarios(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="ola", description="O bot responde para te cumprimentar com todo carinho.")
-    async def ola(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"👋 Olá, {interaction.user.display_name}!")
-
     @app_commands.command(name="pix", description="Gera QR Code e link Pix para doação ao canal.")
     async def pix(self, interaction: discord.Interaction):
         pix_code = "00020126710014BR.GOV.BCB.PIX0111094014879010234Muito obrigado por ajudar o canal.5204000053039865802BR5922Jhon Ross Abdo de Lara6009SAO PAULO62140510BN6RYqd88P63043AFF"
