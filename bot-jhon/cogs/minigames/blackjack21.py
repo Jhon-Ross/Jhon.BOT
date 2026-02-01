@@ -348,7 +348,7 @@ class JoinView(discord.ui.View):
             await interaction.followup.send("Mesa cheia! Iniciando o jogo...")
             await self.game.start()
 
-class Minigames(commands.Cog):
+class Blackjack21(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -378,4 +378,4 @@ class Minigames(commands.Cog):
                  await game.start()
 
 async def setup(bot):
-    await bot.add_cog(Minigames(bot))
+    await bot.add_cog(Blackjack21(bot))
