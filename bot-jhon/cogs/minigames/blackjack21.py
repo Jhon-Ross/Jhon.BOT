@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 import random
 import asyncio
+import database
 
 # Definição das cartas e valores
 SUITS = ['♠️', '♥️', '♦️', '♣️']
@@ -119,10 +120,11 @@ class NextTurnView(discord.ui.View):
             await self.game.advance_turn()
 
 class BlackjackGame:
-    def __init__(self, bot, channel, required_players):
+    def __init__(self, bot, channel, required_players, bet_amount=10):
         self.bot = bot
         self.channel = channel
         self.required_players = required_players
+        self.bet_amount = bet_amount
         self.players = [] # List of member objects
         self.hands = {}
         self.deck = Deck(num_decks=4) # 4 Baralhos (Shoe)
@@ -138,11 +140,28 @@ class BlackjackGame:
             await self.channel.send("✅ **Baralho renovado!**")
 
     async def start(self):
+        # Verificar saldos e descontar apostas antes de começar a rodada
+        active_players = []
+        for player in self.players:
+            database.ensure_user(player.id)
+            user_data = database.get_user(player.id)
+            chips = user_data[2]
+            
+            if chips >= self.bet_amount:
+                database.update_chips(player.id, -self.bet_amount)
+                active_players.append(player)
+            else:
+                await self.channel.send(f"🚫 {player.mention} não tem fichas suficientes ({self.bet_amount}) e foi removido da mesa.")
+        
+        self.players = active_players
+        if not self.players:
+            await self.channel.send("💸 Sem jogadores com fichas suficientes. Mesa encerrada.")
+            return
+
         # Verificar baralho antes de começar
         await self.ensure_deck()
 
         # Deal initial cards
-        # self.deck já é persistente, não recriar aqui
         self.dealer_hand = [self.deck.draw(), self.deck.draw()]
         self.hands = {} # Resetar mãos
         for player in self.players:
@@ -275,21 +294,36 @@ class BlackjackGame:
             d_bj = is_blackjack(self.dealer_hand)
 
             status = ""
+            payout = 0
+
             if p_score > 21:
                 status = "💥 ESTOUROU (Derrota)"
+                payout = 0
             elif d_bj and not p_bj:
                 status = "❌ PERDEU (Dealer Blackjack)"
+                payout = 0
             elif p_bj and not d_bj:
                 status = "🏆 VENCEU (Blackjack!)"
+                payout = int(self.bet_amount * 2.5) # 2.5x
             elif dealer_score > 21:
                 status = "🏆 VENCEU!"
+                payout = self.bet_amount * 2
             elif p_score > dealer_score:
                 status = "🏆 VENCEU!"
+                payout = self.bet_amount * 2
             elif p_score == dealer_score:
                 status = "🤝 EMPATE"
+                payout = self.bet_amount
             else:
                 status = "❌ PERDEU"
+                payout = 0
             
+            if payout > 0:
+                database.update_chips(player.id, payout)
+                status += f" (+{payout} 🎰)"
+            else:
+                status += f" (-{self.bet_amount} 🎰)"
+
             results += f"👤 {player.mention}: **{p_score}** - {status}\n"
 
         final_embed = discord.Embed(title="🃏 Fim de Rodada", description=results, color=discord.Color.green())
@@ -340,6 +374,13 @@ class JoinView(discord.ui.View):
             await interaction.response.send_message("Você já está na mesa!", ephemeral=True)
             return
         
+        # Verificar se tem fichas
+        database.ensure_user(interaction.user.id)
+        user_data = database.get_user(interaction.user.id)
+        if user_data[2] < self.game.bet_amount:
+             await interaction.response.send_message(f"❌ Você não tem fichas suficientes! Precisa de {self.game.bet_amount} 🎰.", ephemeral=True)
+             return
+
         self.game.players.append(interaction.user)
         await interaction.response.send_message(f"{interaction.user.mention} sentou à mesa!", ephemeral=False)
         
@@ -353,18 +394,22 @@ class Blackjack21(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="blackjack", description="Inicia uma partida de Blackjack (21).")
-    @app_commands.describe(jogadores="Número de jogadores na mesa (1-7)")
-    async def blackjack(self, interaction: discord.Interaction, jogadores: int = 1):
+    @app_commands.describe(jogadores="Número de jogadores na mesa (1-7)", aposta="Valor da aposta em fichas (Mín: 10)")
+    async def blackjack(self, interaction: discord.Interaction, jogadores: int = 1, aposta: int = 10):
         if jogadores < 1 or jogadores > 7:
             await interaction.response.send_message("❌ A mesa só cabe entre 1 e 7 jogadores.", ephemeral=True)
             return
+        
+        if aposta < 10:
+             await interaction.response.send_message("❌ A aposta mínima é 10 Fichas.", ephemeral=True)
+             return
 
-        game = BlackjackGame(self.bot, interaction.channel, jogadores)
+        game = BlackjackGame(self.bot, interaction.channel, jogadores, bet_amount=aposta)
         view = JoinView(game, jogadores)
 
         embed = discord.Embed(
             title="🃏 Mesa de Blackjack Aberta!",
-            description=f"Procurando **{jogadores}** jogador(es).\nClique no botão abaixo para sentar à mesa.",
+            description=f"Procurando **{jogadores}** jogador(es).\nAposta: **{aposta} 🎰**\nClique no botão abaixo para sentar à mesa.",
             color=discord.Color.green()
         )
         

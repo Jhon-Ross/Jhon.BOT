@@ -30,7 +30,8 @@ class JhonBot(commands.Bot):
             'cogs.admin',
             'cogs.music',
             'cogs.ai',
-            'cogs.minigames.blackjack21'
+            'cogs.minigames.blackjack21',
+            'cogs.economy'
         ]
 
         for ext in initial_extensions:
