@@ -43,6 +43,9 @@ class Eventos(commands.Cog):
             logging.error(f"Erro ao tentar atualizar o 'topic' do canal: {e}")
 
     async def send_log_message(self, content=None, embed=None):
+        if CANAL_LOG_ID == 0:
+            return
+
         channel = self.bot.get_channel(CANAL_LOG_ID)
         if not channel:
             logging.error(f"Canal de log com ID {CANAL_LOG_ID} não encontrado.")
