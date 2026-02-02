@@ -14,6 +14,8 @@ VERIFICAR_ID = int(os.getenv("VERIFICAR_ID") or 0)
 VISITANTE_ID = int(os.getenv("VISITANTE_ID") or 0)
 BOAS_VINDAS_ID = int(os.getenv("BOAS_VINDAS_ID") or 0)
 GUILD_ID = int(os.getenv("GUILD_ID") or 0)
+ENTRADA_CHANNEL_ID = int(os.getenv("ENTRADA_CHANNEL_ID") or 0)
+SAIDA_CHANNEL_ID = int(os.getenv("SAIDA_CHANNEL_ID") or 0)
 
 class Eventos(commands.Cog):
     def __init__(self, bot):
@@ -89,10 +91,21 @@ class Eventos(commands.Cog):
                 ),
                 color=discord.Color.green()
             )
-            embed.set_image(url="https://media.discordapp.net/attachments/1310617769326153738/1310617942441852928/blitz-crank-league-of-legends.gif")
+            
+            # Tenta usar imagem local 'welcome.gif', se não existir usa a padrão
+            file = None
+            if os.path.exists("welcome.gif"):
+                file = discord.File("welcome.gif", filename="welcome.gif")
+                embed.set_image(url="attachment://welcome.gif")
+            else:
+                embed.set_image(url="https://media.discordapp.net/attachments/1310617769326153738/1310617942441852928/blitz-crank-league-of-legends.gif")
+
             embed.set_thumbnail(url=member.display_avatar.url)
-            embed.add_field(name="ID do Usuário", value=str(member.id), inline=True)
-            await channel.send(embed=embed)
+            
+            if file:
+                await channel.send(file=file, embed=embed)
+            else:
+                await channel.send(embed=embed)
         
         visitante_role = discord.utils.get(member.guild.roles, id=VISITANTE_ID)
         if visitante_role:
@@ -102,12 +115,36 @@ class Eventos(commands.Cog):
                 logging.error(f"Erro ao adicionar cargo: {e}")
 
         await self.update_channel_member_count()
-        await self.send_log_message(content=f"✅ {member.mention} entrou no servidor. ID: {member.id}")
+        
+        # Log de Entrada Detalhado
+        entrada_channel = self.bot.get_channel(ENTRADA_CHANNEL_ID)
+        if entrada_channel:
+            embed_entrada = discord.Embed(title="✅ Membro Entrou", color=discord.Color.blue())
+            embed_entrada.set_thumbnail(url=member.display_avatar.url)
+            embed_entrada.add_field(name="Nome", value=f"{member.name}", inline=True)
+            embed_entrada.add_field(name="Menção", value=f"{member.mention}", inline=True)
+            embed_entrada.add_field(name="ID", value=f"{member.id}", inline=True)
+            embed_entrada.add_field(name="Conta Criada em", value=member.created_at.strftime("%d/%m/%Y %H:%M:%S"), inline=False)
+            embed_entrada.set_footer(text=f"Total de Membros: {member.guild.member_count}")
+            await entrada_channel.send(embed=embed_entrada)
+        else:
+             await self.send_log_message(content=f"✅ {member.mention} entrou no servidor. ID: {member.id}")
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
         await self.update_channel_member_count()
-        await self.send_log_message(content=f"🚪 {member.mention} saiu do servidor. ID: {member.id}")
+        
+        # Log de Saída
+        saida_channel = self.bot.get_channel(SAIDA_CHANNEL_ID)
+        if saida_channel:
+            embed_saida = discord.Embed(title="❌ Membro Saiu", color=discord.Color.red())
+            embed_saida.set_thumbnail(url=member.display_avatar.url)
+            embed_saida.add_field(name="Nome", value=f"{member.name}", inline=True)
+            embed_saida.add_field(name="ID", value=f"{member.id}", inline=True)
+            embed_saida.set_footer(text=f"Total de Membros: {member.guild.member_count}")
+            await saida_channel.send(embed=embed_saida)
+        else:
+            await self.send_log_message(content=f"🚪 {member.mention} saiu do servidor. ID: {member.id}")
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
