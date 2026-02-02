@@ -13,6 +13,7 @@ load_dotenv()
 
 VISITANTE_ID = int(os.getenv("VISITANTE_ID") or 0)
 COMUNIDADE_ID = int(os.getenv("COMUNIDADE_ID") or 0)
+PALAVRA_CHANNEL_ID = int(os.getenv("PALAVRA_CHANNEL_ID") or 0)
 BIBLE_ID = os.getenv("BIBLE_ID")
 API_KEY = os.getenv("API_KEY")
 
@@ -63,6 +64,10 @@ class Utilitarios(commands.Cog):
 
     @app_commands.command(name="palavra", description="Receba uma palavra do Senhor para o seu dia!")
     async def palavra(self, interaction: discord.Interaction):
+        if PALAVRA_CHANNEL_ID and interaction.channel.id != PALAVRA_CHANNEL_ID:
+            await interaction.response.send_message(f"❌ Este comando só pode ser usado no canal <#{PALAVRA_CHANNEL_ID}>.", ephemeral=True)
+            return
+
         await interaction.response.defer() # A API pode demorar
         verse = self.get_random_verse()
         if len(verse) > 2000:
@@ -92,6 +97,10 @@ class Utilitarios(commands.Cog):
 
     @app_commands.command(name="verificar", description="Envia o painel de verificação.")
     async def verificar(self, interaction: discord.Interaction):
+        if VERIFICAR_ID and interaction.channel.id != VERIFICAR_ID:
+            await interaction.response.send_message(f"❌ Este comando só pode ser usado no canal <#{VERIFICAR_ID}>.", ephemeral=True)
+            return
+
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ Apenas administradores podem enviar o painel de verificação.", ephemeral=True)
             return
@@ -105,9 +114,20 @@ class Utilitarios(commands.Cog):
             color=discord.Color.blue()
         )
         embed.set_footer(text="Esperamos que se divirta muito por aqui. 😊")
-        embed.set_image(url="https://media.discordapp.net/attachments/1310617769326153738/1310617942207238224/discord.png?ex=67488293&is=67473113&hm=40ca91c5481bf1dd211c57cdef551335a3b60a15085269cb04bc5376d2e23ee1&=&format=webp&quality=lossless")
+        
+        # Tenta usar imagem local 'verificar.gif', se não existir usa a padrão
+        file = None
+        if os.path.exists("verificar.gif"):
+            file = discord.File("verificar.gif", filename="verificar.gif")
+            embed.set_image(url="attachment://verificar.gif")
+        else:
+            embed.set_image(url="https://media.discordapp.net/attachments/1310617769326153738/1310617942207238224/discord.png?ex=67488293&is=67473113&hm=40ca91c5481bf1dd211c57cdef551335a3b60a15085269cb04bc5376d2e23ee1&=&format=webp&quality=lossless")
 
-        await interaction.channel.send(embed=embed, view=PersistentView())
+        if file:
+            await interaction.channel.send(embed=embed, view=PersistentView(), file=file)
+        else:
+            await interaction.channel.send(embed=embed, view=PersistentView())
+        
         await interaction.response.send_message("Painel enviado!", ephemeral=True)
 
     def get_random_verse(self):
