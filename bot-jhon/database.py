@@ -15,6 +15,26 @@ def init_db():
                     pulerins INTEGER DEFAULT 0,
                     chips INTEGER DEFAULT 0
                 )''')
+    
+    # Tabela de Avisos (Warnings)
+    c.execute('''CREATE TABLE IF NOT EXISTS warnings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    staff_id INTEGER,
+                    reason TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )''')
+
+    # Tabela de Logs de Moderação
+    c.execute('''CREATE TABLE IF NOT EXISTS mod_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    action_type TEXT, -- 'warn', 'ban', 'kick', 'timeout'
+                    staff_id INTEGER,
+                    target_id INTEGER,
+                    reason TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )''')
+                
     conn.commit()
     conn.close()
 
@@ -70,5 +90,53 @@ def update_chips(user_id, amount):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("UPDATE users SET chips = chips + ? WHERE user_id = ?", (amount, user_id))
+    conn.commit()
+    conn.close()
+
+# --- FUNÇÕES DE MODERAÇÃO ---
+
+def add_warning(user_id, staff_id, reason):
+    """Adiciona um aviso ao usuário e retorna o total de avisos ativos."""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("INSERT INTO warnings (user_id, staff_id, reason) VALUES (?, ?, ?)", (user_id, staff_id, reason))
+    c.execute("SELECT COUNT(*) FROM warnings WHERE user_id = ?", (user_id,))
+    count = c.fetchone()[0]
+    conn.commit()
+    conn.close()
+    return count
+
+def get_warnings_count(user_id):
+    """Retorna o total de avisos de um usuário."""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM warnings WHERE user_id = ?", (user_id,))
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+def log_mod_action(action_type, staff_id, target_id, reason):
+    """Registra uma ação administrativa no log."""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("INSERT INTO mod_logs (action_type, staff_id, target_id, reason) VALUES (?, ?, ?, ?)", 
+              (action_type, staff_id, target_id, reason))
+    conn.commit()
+    conn.close()
+
+def get_staff_daily_actions(staff_id):
+    """Retorna o número de ações realizadas por um staff hoje."""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM mod_logs WHERE staff_id = ? AND date(timestamp) = date('now')", (staff_id,))
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+def clear_warnings(user_id):
+    """Remove todos os avisos de um usuário."""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("DELETE FROM warnings WHERE user_id = ?", (user_id,))
     conn.commit()
     conn.close()

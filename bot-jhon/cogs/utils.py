@@ -130,6 +130,43 @@ class Utilitarios(commands.Cog):
         
         await interaction.response.send_message("Painel enviado!", ephemeral=True)
 
+    @app_commands.command(name="regras", description="Exibe as regras de moderação e convivência do servidor.")
+    async def regras(self, interaction: discord.Interaction):
+        file_path = "REGRAS_MODERACAO.md"
+        
+        if not os.path.exists(file_path):
+            await interaction.response.send_message("❌ O arquivo de regras não foi encontrado.", ephemeral=True)
+            return
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Remove o título principal do MD para usar no título do Embed
+        lines = content.split("\n")
+        title = "🛡️ Regras de Convivência"
+        clean_content = content
+        
+        if lines[0].startswith("# "):
+            title = lines[0].replace("# ", "").strip()
+            clean_content = "\n".join(lines[1:]).strip()
+
+        embed = discord.Embed(
+            title=title,
+            description=clean_content,
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
+        )
+        
+        embed.set_footer(text="Leia com atenção para uma boa convivência! 😊")
+        
+        # Tenta usar a imagem de verificação como thumbnail para dar um estilo
+        if os.path.exists("verificar.gif"):
+            file = discord.File("verificar.gif", filename="verificar.gif")
+            embed.set_thumbnail(url="attachment://verificar.gif")
+            await interaction.response.send_message(embed=embed, file=file)
+        else:
+            await interaction.response.send_message(embed=embed)
+
     def get_random_verse(self):
         try:
             headers = {"api-key": API_KEY}

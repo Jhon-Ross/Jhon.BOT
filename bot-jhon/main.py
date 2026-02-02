@@ -31,7 +31,8 @@ class JhonBot(commands.Bot):
             'cogs.music',
             'cogs.ai',
             'cogs.minigames.blackjack21',
-            'cogs.economy'
+            'cogs.economy',
+            'cogs.moderation'
         ]
 
         for ext in initial_extensions:
@@ -43,20 +44,33 @@ class JhonBot(commands.Bot):
 
         # Sincronizar Slash Commands
         try:
-            # Sincroniza comandos globais
-            synced = await self.tree.sync()
-            print(f"🔄 Slash Commands Globais sincronizados: {len(synced)} comandos.")
+            # 1. Sincroniza comandos globais (pode levar até 1 hora para propagar)
+            # synced = await self.tree.sync()
+            # print(f"🔄 Slash Commands Globais sincronizados: {len(synced)} comandos.")
 
-            # Limpa comandos antigos específicos do servidor (Guild) para evitar duplicatas
+            # 2. Sincroniza comandos IMEDIATAMENTE na guilda de desenvolvimento
             if GUILD_ID:
                 try:
                     guild_obj = discord.Object(id=int(GUILD_ID))
-                    # Limpa os comandos da guilda para garantir que apenas os globais sejam exibidos
-                    self.tree.clear_commands(guild=guild_obj)
-                    await self.tree.sync(guild=guild_obj)
-                    print(f"🧹 Comandos da guilda ({GUILD_ID}) limpos para evitar duplicação (usando apenas globais).")
+                    
+                    # Copia todos os comandos globais para a guilda específica
+                    self.tree.copy_global_to(guild=guild_obj)
+                    
+                    # Sincroniza na guilda (aparece instantaneamente)
+                    synced_guild = await self.tree.sync(guild=guild_obj)
+                    print(f"🚀 Comandos sincronizados IMEDIATAMENTE na guilda {GUILD_ID}: {len(synced_guild)} comandos.")
+
+                    # Opcional: Descomente para forçar limpeza global se ainda houver problemas
+                    # self.tree.clear_commands(guild=None)
+                    # await self.tree.sync(guild=None)
+                    # print("🧹 Comandos globais limpos.")
+                    
                 except Exception as e:
-                    print(f"⚠️ Aviso: Não foi possível limpar comandos do servidor: {e}")
+                    print(f"⚠️ Aviso: Não foi possível sincronizar na guilda: {e}")
+            else:
+                # Se não tiver GUILD_ID, faz o sync global normal
+                synced = await self.tree.sync()
+                print(f"🔄 Slash Commands Globais sincronizados: {len(synced)} comandos.")
 
         except Exception as e:
             print(f"❌ Falha ao sincronizar comandos: {e}")
