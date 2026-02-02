@@ -20,6 +20,8 @@ class Moderacao(commands.Cog):
         self.spam_control = {} # {user_id: [last_messages]}
         self.join_times = [] # [timestamp] para anti-raid
         self.emoji_regex = re.compile(r'<a?:.+?:\d+>|[\u263a-\U0001f645]') # Regex simples para emojis
+        # Regex para identificar links (http/https)
+        self.link_regex = re.compile(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
 
     async def send_mod_log(self, embed):
         """Envia um log para o canal de logs configurado."""
