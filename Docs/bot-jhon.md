@@ -1,103 +1,88 @@
-# Bot Discord – bot-jhon
+# Bot Discord – Jhon.BOT 🤖
 
-Documentação dividida em duas partes: uma visão profissional para entendimento rápido e uma visão técnica para implementação, manutenção e evolução.
+Documentação atualizada refletindo a transição para uma arquitetura modular baseada em **Cogs**, integração com banco de dados SQLite e sistema de moderação avançado.
 
-## Parte 1 — Leitura Profissional
+## Parte 1 — Visão Geral e Funcionalidades
 
-- Objetivo
-  - Automatizar interações em um servidor Discord: boas‑vindas, verificação de membros, comandos úteis, música e mensagens inspiracionais.
-- Principais funcionalidades
-  - Verificação por botão com atribuição automática de cargos.
-  - Mensagem de boas‑vindas com embed e contagem de membros no tópico do canal.
-  - Comandos: apresentação pessoal, lista de comandos, limpeza de mensagens, versículo bíblico aleatório.
-  - Reprodução de música via YouTube com `yt_dlp` e `ffmpeg`.
-  - Geração de QR Code Pix para doações.
-  - Sistema de log de atividades em canal dedicado (entradas/saídas, voz, mensagens, reações, cargos).
-- Experiência do usuário
-  - Interação via comandos com prefixo `.` (ex.: `.ola`, `.limpar 10`).
-  - Mensagens claras e responsivas (embeds com imagens e emojis).
-  - Processo de verificação simples via botão “Iniciar verificação”.
-- Requisitos para uso
-  - Um servidor Discord com canais e cargos configurados (IDs no `.env`).
-  - `DISCORD_TOKEN` válido e acesso às APIs externas quando aplicável.
-- Como iniciar
-  - Criar `.env` com os IDs e chaves.
-  - Executar o arquivo `start.bat` na raiz do projeto (Recomendado).
-  - Ou manualmente: instalar dependências e rodar `python bot-jhon/app.py`.
+### 🎯 Objetivo
+Automatizar a gestão e interação de servidores Discord, oferecendo ferramentas de moderação inteligente, economia, entretenimento e utilitários em uma única interface amigável.
 
-## Parte 2 — Leitura Técnica
+### 🛡️ Sistema de Moderação (Moderacao Cog)
+O bot utiliza uma abordagem educativa antes de aplicar punições severas:
+- **Warns Progressivos:** 
+  - 1º e 2º: Notificação via DM.
+  - 3º: **Timeout automático** de 10 minutos.
+  - 5º: Alerta para a Staff para avaliação de banimento.
+- **Filtros Automáticos (Anti-Spam):**
+  - Detecção de mensagens repetidas (flood).
+  - Bloqueio de CAPS LOCK excessivo.
+  - Limite de emojis por mensagem.
+  - Filtro de links (permitidos apenas em canais específicos).
+- **Segurança Ativa:**
+  - **Anti-Fake:** Sinaliza contas criadas há menos de 7 dias.
+  - **Anti-Raid:** Monitora bursts de entrada de membros em curto espaço de tempo.
+- **Auditoria:** Logs detalhados em canal privado e limite diário de ações por staffer (Controle de Autoridade).
 
-- Stack e dependências
-  - Python 3.x, `discord.py`, `python-dotenv`, `requests`, `qrcode[pil]`, `PyNaCl`, `asyncio` (em `bot-jhon/requirements.txt:1-6`).
-  - `yt_dlp` é utilizado (bot-jhon/app.py:10), portanto deve ser instalado: `pip install yt_dlp`.
-  - `ffmpeg` precisa estar instalado no sistema e acessível no PATH para áudio.
-- Estrutura do projeto
-  - `bot-jhon/app.py`: código principal do bot.
-  - `bot-jhon/requirements.txt`: dependências Python.
-  - `bot-jhon/.env`: variáveis de ambiente (não versionar segredos).
-- Configuração de ambiente (`.env`)
-  - `DISCORD_TOKEN`: token do bot no Discord.
-  - `API_KEY`: chave da API Scripture (Bíblia).
-  - `BIBLE_ID`: identificador da Bíblia na API.
-  - `GUILD_ID`: ID do servidor.
-  - `WELCOME_CHANNEL_ID`, `RULES_CHANNEL_ID`, `VERIFICAR_ID`, `CANAL_LOG_ID`, `BOAS_VINDAS_ID`: IDs de canais usados.
-  - `VISITANTE_ID`, `COMUNIDADE_ID`: IDs de cargos para fluxo de verificação.
-  - Leitura e casting ocorrem no início (bot-jhon/app.py:16-29).
-- Comandos disponíveis
-  - `.ola`: cumprimenta o usuário (bot-jhon/app.py:404-408).
-  - `.limpar [n]`: apaga entre 1 e 100 mensagens, requer permissão (bot-jhon/app.py:445-456).
-  - `.palavra`: retorna dois versículos consecutivos aleatórios (bot-jhon/app.py:410-417). Usa `get_random_verse` (bot-jhon/app.py:305-375).
-  - `.apresentação`: envia embed de apresentação (bot-jhon/app.py:421-443).
-  - `.comandos`: lista comandos disponíveis com explicações (bot-jhon/app.py:379-399).
-  - `.verificar`: publica embed com botão de verificação persistente (bot-jhon/app.py:168-182). O botão dispara `handle_verification` (bot-jhon/app.py:146-164).
-  - `.pix`: gera QR Code Pix e link “copia e cola” (bot-jhon/app.py:274-300).
-- Fluxos e eventos
-  - `on_ready`: envia log de inicialização para canal configurado.
-  - `on_member_join`: boas‑vindas com embed, atribui cargo visitante, atualiza contagem e registra log de entrada.
-  - `on_member_remove`: atualiza contagem de membros e registra log de saída.
-  - `on_interaction`: captura clique no botão de verificação e chama `handle_verification`.
-  - `on_voice_state_update`: registra entrada, saída e troca de canal de voz.
-  - `on_member_update`: registra cargos adicionados e removidos.
-  - `on_message_delete` / `on_message_edit`: registra mensagens apagadas e editadas (ignorando bots).
-  - `on_reaction_add` / `on_reaction_remove`: registra reações adicionadas/removidas em mensagens.
-- Música via YouTube
-  - Configura `yt_dlp` e `FFmpegPCMAudio` para extrair áudio e tocar em canal de voz (bot-jhon/app.py:84-97, 99-114).
-  - Comando `.musica <url>` conecta ao canal do usuário e toca a faixa (bot-jhon/app.py:116-142).
-  - Requer `PyNaCl` e `ffmpeg` instalados; trata `TimeoutError` e `ClientException`.
-- Integração Bíblia (Scripture API)
-  - Busca livros, capítulos e dois versículos consecutivos, limpando HTML com regex (bot-jhon/app.py:305-370).
-  - Trata indisponibilidade (HTTP 503) e erros de rede (bot-jhon/app.py:371-375).
-- Doações Pix
-  - Gera QR Code em memória com `qrcode` e envia arquivo junto ao embed (bot-jhon/app.py:280-300).
-  - Inclui link “Pix Copia e Cola” para facilitar pagamento (bot-jhon/app.py:287-295).
-- Boas‑vindas e contagem de membros
-  - Atualiza o tópico do canal com contagem em emojis (bot-jhon/app.py:198-210). Usa `get_emoji_for_number` (bot-jhon/app.py:189-194).
-- Logging e tratamento de erros
-  - `logging.basicConfig(level=logging.INFO)` para console (bot-jhon/app.py:184).
-  - `send_log_message` centraliza o envio de eventos para o canal `CANAL_LOG_ID`.
-  - `on_command_error` ignora “Unknown message” e reloga outros.
-- Observações técnicas e melhorias sugeridas
-  - Adicionar `yt_dlp` ao `requirements.txt` para evitar falhas em produção.
-  - Remover a duplicação de `on_interaction` mantendo apenas uma definição.
-  - Considerar validação de IDs do `.env` na inicialização com mensagens de diagnóstico.
-  - Externalizar URLs/imagens estáticas para configuração.
-- Execução local
-  - **Método Fácil (Recomendado):**
-    - Basta dar dois cliques no arquivo `start.bat`. Ele cria o ambiente virtual, instala tudo e roda o bot.
-  - **Método Manual:**
-    - Criar e ativar ambiente virtual (opcional):
-      - Windows PowerShell: `python -m venv .venv && .venv\Scripts\Activate.ps1`
-    - Instalar dependências: `pip install -r bot-jhon/requirements.txt && pip install yt_dlp`.
-    - Configurar `.env` em `bot-jhon/.env` com as variáveis citadas.
-    - Rodar: `python bot-jhon/app.py`.
-- Testes e validação
-  - Testes manuais no servidor de desenvolvimento: verificar comandos, eventos e áudio.
-  - Validar permissão do usuário para `.limpar` e respostas de erros.
-  - Conferir disponibilidade da Scripture API e credenciais.
-- Segurança
-  - Nunca versionar valores de `DISCORD_TOKEN` e chaves.
-  - Tratar cuidadosamente IDs de canais/cargos; evitar logs com dados sensíveis.
+### 💰 Economia e Diversão (Economy Cog)
+- **Pulerins:** Moeda virtual do servidor.
+- **Blackjack:** Jogo de cassino totalmente interativo.
+- **Rank:** Ranking dos membros mais ricos.
+
+### 🛠️ Utilitários e Automação (Utils Cog)
+- **Verificação:** Painel com botão persistente e suporte a GIFs locais.
+- **Regras:** Comando `/regras` que exibe o conteúdo do arquivo `REGRAS_MODERACAO.md`.
+- **Bíblia:** Versículos aleatórios via API externa.
+- **Pix:** Geração de QR Code para doações.
 
 ---
 
-Esta documentação cobre visão executiva e um guia técnico completo para operar, manter e evoluir o projeto `bot-jhon` com referências diretas ao código.
+## Parte 2 — Arquitetura Técnica
+
+### 📂 Estrutura de Arquivos
+- `main.py`: Ponto de entrada, configuração de intents e carregamento de Cogs.
+- `database.py`: Interface com SQLite (gerenciamento de usuários, warnings e logs).
+- `cogs/`:
+  - `moderation.py`: Lógica de filtros, avisos e segurança.
+  - `utils.py`: Comandos utilitários e painéis interativos.
+  - `economy.py`: Sistema de moedas e ranking.
+  - `events.py`: Listeners globais (boas-vindas, logs de voz, etc.).
+  - `ai.py`: Integração com inteligência artificial.
+  - `music.py`: Gerenciamento de áudio e filas do YouTube.
+
+### 🗄️ Banco de Dados (SQLite)
+Utiliza o arquivo `economy.db` com as seguintes tabelas principais:
+- `users`: Armazena `user_id`, `pulerins` e `chips`.
+- `warnings`: Registra `user_id`, `staff_id`, `reason` e `timestamp`.
+- `mod_logs`: Auditoria de todas as ações (`warn`, `timeout`, `clear_warns`).
+
+### ⚙️ Configuração (`.env`)
+Campos obrigatórios:
+- `DISCORD_TOKEN`: Token do bot.
+- `GUILD_ID`: ID do servidor principal (para sincronização instantânea de comandos).
+- `VERIFICAR_ID`: ID do canal de verificação.
+- `CANAL_LOG_ID`: ID do canal de logs da Staff.
+- `API_KEY` & `BIBLE_ID`: Credenciais para a API da Bíblia.
+- IDs de cargos: `VISITANTE_ID`, `COMUNIDADE_ID`.
+
+### 🚀 Sincronização de Comandos
+O bot utiliza um sistema de sincronização otimizado em `main.py`:
+- Durante o desenvolvimento, os comandos são sincronizados **instantaneamente** na guilda definida pelo `GUILD_ID` usando `tree.copy_global_to`.
+- Comandos globais são limpos para evitar duplicação na interface do usuário.
+
+---
+
+## Parte 3 — Guia de Manutenção e Evolução
+
+### Como Adicionar Novos Comandos
+1. Crie ou edite um arquivo dentro da pasta `cogs/`.
+2. Utilize o decorator `@app_commands.command()` para comandos Slash.
+3. Adicione o nome da extensão na lista `initial_extensions` em `main.py`.
+
+### Dependências Críticas
+- `discord.py`: Framework principal.
+- `yt-dlp` & `PyNaCl`: Essenciais para o sistema de música.
+- `qrcode`: Geração de QR Codes Pix.
+- `ffmpeg`: Necessário instalado no SO para processamento de áudio.
+
+---
+*Documentação atualizada em: 2026*
