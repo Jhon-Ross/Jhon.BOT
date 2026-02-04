@@ -73,14 +73,14 @@ class Eventos(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
+        rules_channel = self.bot.get_channel(RULES_CHANNEL_ID)
+        verificar_channel = self.bot.get_channel(VERIFICAR_ID)
         channel = self.bot.get_channel(WELCOME_CHANNEL_ID)
+
         if channel:
             if not hasattr(channel, 'send'):
                 logging.error(f"Erro de Configuração: O canal de boas-vindas (ID: {WELCOME_CHANNEL_ID}) não é um canal de texto.")
                 return
-
-            rules_channel = self.bot.get_channel(RULES_CHANNEL_ID)
-            verificar_channel = self.bot.get_channel(VERIFICAR_ID)
 
             embed = discord.Embed(
                 title="👋 Bem-vindo(a)!",
@@ -113,6 +113,29 @@ class Eventos(commands.Cog):
                 await member.add_roles(visitante_role)
             except Exception as e:
                 logging.error(f"Erro ao adicionar cargo: {e}")
+
+        # Envia DM de Boas-Vindas
+        try:
+            embed_dm = discord.Embed(
+                title="👋 Bem-vindo(a) ao Servidor!",
+                description=(
+                    f"Olá {member.name}, ficamos muito felizes em ter você conosco!\n\n"
+                    f"🎁 **Você ganhou 1000 Pulerins** para começar sua jornada!\n"
+                    f"Use `/saldo` no servidor para conferir.\n\n"
+                    f"📌 **Importante:**\n"
+                    f"• Leia as regras em {rules_channel.mention if rules_channel else '#regras'}\n"
+                    f"• Verifique-se em {verificar_channel.mention if verificar_channel else '#verificar'}\n\n"
+                    f"Divirta-se!"
+                ),
+                color=discord.Color.gold()
+            )
+            if member.guild.icon:
+                embed_dm.set_thumbnail(url=member.guild.icon.url)
+            await member.send(embed=embed_dm)
+        except discord.Forbidden:
+            logging.warning(f"Não foi possível enviar DM para {member.name} (DMs fechadas).")
+        except Exception as e:
+            logging.error(f"Erro ao enviar DM de boas-vindas: {e}")
 
         await self.update_channel_member_count()
         
