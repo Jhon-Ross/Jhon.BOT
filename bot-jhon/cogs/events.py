@@ -30,7 +30,7 @@ class Eventos(commands.Cog):
             discord.Activity(type=discord.ActivityType.watching, name="🎫 Central de Tickets"),
             discord.Activity(type=discord.ActivityType.listening, name="🎵 Músicas no Servidor"),
             discord.Game("🎲 /blackjack valendo tudo!"),
-            discord.Game("Competindo e Trabalhando para CapivaRoss"),
+            discord.Game("Trabalhando para CapivaRoss"),
             discord.Activity(type=discord.ActivityType.watching, name=f"{len(self.bot.users)} usuários"),
         ]
         await self.bot.change_presence(activity=random.choice(statuses))
