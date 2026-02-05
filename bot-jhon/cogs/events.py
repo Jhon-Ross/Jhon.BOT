@@ -1,7 +1,8 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import logging
 import os
+import random
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,6 +22,22 @@ class Eventos(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         logging.basicConfig(level=logging.INFO)
+        self.status_loop.start()
+
+    @tasks.loop(seconds=60)
+    async def status_loop(self):
+        statuses = [
+            discord.Activity(type=discord.ActivityType.watching, name="🎫 Central de Tickets"),
+            discord.Activity(type=discord.ActivityType.listening, name="🎵 Músicas no Servidor"),
+            discord.Game("🎲 /blackjack valendo tudo!"),
+            discord.Game("Competindo e Trabalhando para CapivaRoss"),
+            discord.Activity(type=discord.ActivityType.watching, name=f"{len(self.bot.users)} usuários"),
+        ]
+        await self.bot.change_presence(activity=random.choice(statuses))
+
+    @status_loop.before_loop
+    async def before_status_loop(self):
+        await self.bot.wait_until_ready()
 
     def get_emoji_for_number(self, number):
         emojis = {
