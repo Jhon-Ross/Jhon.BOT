@@ -150,7 +150,12 @@ class Store(commands.Cog):
 
         try:
             await channel.send(embed=embed)
-            await interaction.response.send_message(f"✅ Anúncio postado com sucesso em {channel.mention}!", ephemeral=True)
+            
+            msg_response = f"✅ Anúncio postado com sucesso em {channel.mention}!"
+            if rodape and ("<@" in rodape or "<#" in rodape):
+                msg_response += "\n⚠️ **Nota:** O rodapé do Discord não suporta menções clicáveis. Recomendamos colocar isso na descrição."
+                
+            await interaction.response.send_message(msg_response, ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"❌ Erro ao enviar anúncio: {e}", ephemeral=True)
             logging.error(f"Erro ao enviar anúncio de loja: {e}")
@@ -241,12 +246,16 @@ class Store(commands.Cog):
         except Exception as e:
             await interaction.response.send_message(f"❌ Erro ao postar produto: {e}", ephemeral=True)
 
-    @app_commands.command(name="editar-produto", description="Edita um produto já postado (Use o ID da mensagem).")
+    editar = app_commands.Group(name="editar", description="Edita postagens da loja")
+
+    @editar.command(name="produto", description="Edita um produto já postado.")
     @app_commands.describe(
-        mensagem_id="ID da mensagem do produto (copie do chat)",
+        mensagem_id="ID da mensagem do produto",
         novo_preco="Novo preço (opcional)",
         novo_estoque="Novo estoque (opcional)",
-        nova_descricao="Nova descrição (opcional)"
+        nova_descricao="Nova descrição (opcional)",
+        novo_nome="Novo nome do produto (opcional)",
+        nova_imagem="Nova URL da imagem (opcional)"
     )
     async def editar_produto(
         self, 
@@ -254,7 +263,9 @@ class Store(commands.Cog):
         mensagem_id: str, 
         novo_preco: str = None, 
         novo_estoque: str = None,
-        nova_descricao: str = None
+        nova_descricao: str = None,
+        novo_nome: str = None,
+        nova_imagem: str = None
     ):
         if not self.is_in_store_category(interaction):
             await interaction.response.send_message("❌ Este comando só pode ser usado na categoria **LOJA**.", ephemeral=True)
@@ -274,15 +285,17 @@ class Store(commands.Cog):
 
         embed = msg.embeds[0]
 
-        # Atualiza campos existentes ou adiciona novos
+        # Atualiza campos básicos
+        if novo_nome:
+            embed.title = novo_nome
+            
         if nova_descricao:
             embed.description = nova_descricao.replace("\\n", "\n")
+            
+        if nova_imagem:
+            embed.set_image(url=nova_imagem)
 
-        # Para campos (fields), precisamos reconstruir a lista pois fields são imutáveis diretamente por índice as vezes em libs antigas, 
-        # mas no discord.py moderno podemos limpar e refazer ou editar.
-        # A estratégia mais segura é recriar os fields mantendo o que não mudou.
-        
-        # Vamos fazer um mapa dos fields atuais
+        # Atualiza Fields
         fields_data = {field.name: field.value for field in embed.fields}
         
         if novo_preco:
@@ -292,25 +305,85 @@ class Store(commands.Cog):
         if novo_estoque:
             fields_data["📦 Estoque"] = f"`{novo_estoque}`"
 
-        # Limpa e readiciona na ordem preferencial
+        # Reconstrói os fields
         embed.clear_fields()
-        
-        # Ordem de exibição
         order = ["💰 Preço", "📦 Estoque", "🔗 Link / Compra"]
         
         for name in order:
             if name in fields_data:
-                # Link costuma ser inline=False
                 inline = False if "Link" in name else True
                 embed.add_field(name=name, value=fields_data[name], inline=inline)
         
-        # Adiciona quaisquer outros campos que não estavam na ordem padrão (caso tenha adicionado extras manualmente)
         for name, value in fields_data.items():
             if name not in order:
                  embed.add_field(name=name, value=value, inline=True)
 
         await msg.edit(embed=embed)
         await interaction.response.send_message("✅ Produto atualizado com sucesso!", ephemeral=True)
+
+    @editar.command(name="anuncio", description="Edita um anúncio já postado.")
+    @app_commands.describe(
+        mensagem_id="ID da mensagem do anúncio",
+        novo_titulo="Novo título (opcional)",
+        nova_descricao="Nova descrição (opcional)",
+        nova_imagem="Nova URL da imagem (opcional)",
+        nova_cor="Nova cor em Hex (opcional)",
+        novo_rodape="Novo rodapé (opcional)"
+    )
+    async def editar_anuncio(
+        self, 
+        interaction: discord.Interaction, 
+        mensagem_id: str, 
+        novo_titulo: str = None, 
+        nova_descricao: str = None, 
+        nova_imagem: str = None, 
+        nova_cor: str = None, 
+        novo_rodape: str = None
+    ):
+        if not self.is_in_store_category(interaction):
+            await interaction.response.send_message("❌ Este comando só pode ser usado na categoria **LOJA**.", ephemeral=True)
+            return
+
+        channel = self.bot.get_channel(CHANNEL_ANUNCIOS_ID)
+        
+        try:
+            msg = await channel.fetch_message(int(mensagem_id))
+        except:
+            await interaction.response.send_message("❌ Mensagem não encontrada no canal de anúncios.", ephemeral=True)
+            return
+
+        if not msg.embeds:
+            await interaction.response.send_message("❌ Essa mensagem não contém um anúncio válido.", ephemeral=True)
+            return
+
+        embed = msg.embeds[0]
+
+        if novo_titulo:
+            embed.title = novo_titulo
+            
+        if nova_descricao:
+            embed.description = nova_descricao.replace("\\n", "\n")
+            
+        if nova_imagem:
+            embed.set_image(url=nova_imagem)
+            
+        if nova_cor:
+            try:
+                cor_clean = nova_cor.replace("#", "")
+                embed.color = discord.Color(int(cor_clean, 16))
+            except:
+                pass
+                
+        if novo_rodape:
+            embed.set_footer(text=novo_rodape)
+
+        await msg.edit(embed=embed)
+        
+        msg_response = "✅ Anúncio atualizado com sucesso!"
+        if novo_rodape and ("<@" in novo_rodape or "<#" in novo_rodape):
+             msg_response += "\n⚠️ **Nota:** O rodapé do Discord não suporta menções clicáveis. Recomendamos colocar isso na descrição."
+             
+        await interaction.response.send_message(msg_response, ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Store(bot))
