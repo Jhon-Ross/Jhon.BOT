@@ -1,6 +1,8 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+import database
+import io
 
 SUPORTE_CATEGORIA_ID = 1096139038886473828
 TICKET_CANAL_ID = 1096139214938177647
@@ -123,6 +125,10 @@ class TicketPanelView(discord.ui.View):
             content = f"{content} {ping_staff}"
 
         await ticket_channel.send(content=content, embed=embed, view=TicketManageView())
+        
+        # Registrar no banco de dados
+        database.create_ticket(ticket_channel.id, interaction.user.id, ticket_type)
+        
         await interaction.response.send_message(f"✅ Ticket criado em {ticket_channel.mention}.", ephemeral=True)
 
     @discord.ui.button(label="Suporte", style=discord.ButtonStyle.primary, emoji="🎫", custom_id="ticket_open_suporte")
@@ -193,6 +199,9 @@ class TicketManageView(discord.ui.View):
         except Exception:
             pass
 
+        # Atualizar status no banco de dados
+        database.close_ticket(channel.id)
+
         await interaction.response.send_message("✅ Ticket fechado.", ephemeral=True)
 
     @discord.ui.button(label="Deletar", style=discord.ButtonStyle.danger, emoji="🗑️", custom_id="ticket_delete")
@@ -211,6 +220,10 @@ class TicketManageView(discord.ui.View):
             return
 
         await interaction.response.send_message("🗑️ Deletando ticket...", ephemeral=True)
+        
+        # Garante que está fechado no banco antes de deletar
+        database.close_ticket(channel.id)
+        
         await channel.delete()
 
 
@@ -222,6 +235,22 @@ class Tickets(commands.Cog):
     async def on_ready(self):
         self.bot.add_view(TicketPanelView())
         self.bot.add_view(TicketManageView())
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or not message.guild:
+            return
+
+        # Verifica se é um ticket aberto no banco de dados
+        if database.is_ticket_open(message.channel.id):
+            attachment_url = message.attachments[0].url if message.attachments else None
+            database.add_ticket_message(
+                channel_id=message.channel.id,
+                author_id=message.author.id,
+                author_name=message.author.display_name,
+                content=message.content,
+                attachment_url=attachment_url
+            )
 
     def _can_use_ticket_command(self, member: discord.Member) -> bool:
         return _member_has_any_id(member, TICKET_STAFF_IDS)
@@ -248,6 +277,62 @@ class Tickets(commands.Cog):
         )
         await channel.send(embed=embed, view=TicketPanelView())
         await interaction.response.send_message(f"✅ Painel enviado em {channel.mention}.", ephemeral=True)
+
+
+    @app_commands.command(name="ver_ticket", description="Gera um arquivo com o histórico de mensagens de um ticket (ID do canal).")
+    @app_commands.describe(ticket_id="ID do canal do ticket (caso o canal já tenha sido deletado)")
+    async def view_ticket(self, interaction: discord.Interaction, ticket_id: str):
+        if not interaction.guild:
+            return
+
+        if not self._can_use_ticket_command(interaction.user):
+            await interaction.response.send_message("❌ Você não tem permissão para ver históricos de tickets.", ephemeral=True)
+            return
+
+        try:
+            tid = int(ticket_id)
+        except ValueError:
+            await interaction.response.send_message("❌ ID inválido. Use apenas números.", ephemeral=True)
+            return
+
+        messages = database.get_ticket_messages(tid)
+        if not messages:
+            await interaction.response.send_message("❌ Nenhuma mensagem encontrada para este ticket.", ephemeral=True)
+            return
+
+        # Gera o conteúdo do arquivo
+        lines = [f"HISTÓRICO DO TICKET {tid}\n==========================\n"]
+        for author, content, timestamp, attachment in messages:
+            line = f"[{timestamp}] {author}: {content}"
+            if attachment:
+                line += f" (Anexo: {attachment})"
+            lines.append(line)
+
+        file_content = "\n".join(lines)
+        file = discord.File(io.BytesIO(file_content.encode("utf-8")), filename=f"ticket-{tid}.txt")
+        
+        await interaction.response.send_message(f"📄 Histórico do ticket {tid}:", file=file, ephemeral=True)
+
+    @app_commands.command(name="meus_tickets", description="Mostra seus tickets anteriores.")
+    async def my_tickets(self, interaction: discord.Interaction):
+        tickets = database.get_user_tickets(interaction.user.id)
+        if not tickets:
+            await interaction.response.send_message("📭 Você não possui histórico de tickets.", ephemeral=True)
+            return
+
+        embed = discord.Embed(title="📜 Seus Tickets", color=discord.Color.blue())
+        
+        # Limita a 10 últimos para não estourar o embed
+        for tid, ttype, status, created, closed in tickets[:10]:
+            status_emoji = "🟢" if status == "open" else "🔴"
+            closed_str = f"\nFechado em: {closed}" if closed else ""
+            embed.add_field(
+                name=f"{status_emoji} {ttype.capitalize()} (ID: {tid})",
+                value=f"Criado em: {created}{closed_str}",
+                inline=False
+            )
+            
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
