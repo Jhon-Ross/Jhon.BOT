@@ -111,8 +111,9 @@ class Eventos(commands.Cog):
             
             # Tenta usar imagem local 'welcome.gif', se não existir usa a padrão
             file = None
-            if os.path.exists("welcome.gif"):
-                file = discord.File("welcome.gif", filename="welcome.gif")
+            file_path = r"e:\Projetos - Jhon Ross\Projetos - Proprios\Bot-Discord\bot-jhon\imgs\welcome.gif"
+            if os.path.exists(file_path):
+                file = discord.File(file_path, filename="welcome.gif")
                 embed.set_image(url="attachment://welcome.gif")
             else:
                 embed.set_image(url="https://media.discordapp.net/attachments/1310617769326153738/1310617942441852928/blitz-crank-league-of-legends.gif")

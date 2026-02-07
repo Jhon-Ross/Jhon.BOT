@@ -117,8 +117,9 @@ class Utilitarios(commands.Cog):
         
         # Tenta usar imagem local 'verificar.gif', se não existir usa a padrão
         file = None
-        if os.path.exists("verificar.gif"):
-            file = discord.File("verificar.gif", filename="verificar.gif")
+        file_path = r"e:\Projetos - Jhon Ross\Projetos - Proprios\Bot-Discord\bot-jhon\imgs\verificar.gif"
+        if os.path.exists(file_path):
+            file = discord.File(file_path, filename="verificar.gif")
             embed.set_image(url="attachment://verificar.gif")
         else:
             embed.set_image(url="https://media.discordapp.net/attachments/1310617769326153738/1310617942207238224/discord.png?ex=67488293&is=67473113&hm=40ca91c5481bf1dd211c57cdef551335a3b60a15085269cb04bc5376d2e23ee1&=&format=webp&quality=lossless")
@@ -160,8 +161,9 @@ class Utilitarios(commands.Cog):
         embed.set_footer(text="Leia com atenção para uma boa convivência! 😊")
         
         # Tenta usar a imagem de verificação como thumbnail para dar um estilo
-        if os.path.exists("verificar.gif"):
-            file = discord.File("verificar.gif", filename="verificar.gif")
+        file_path = r"e:\Projetos - Jhon Ross\Projetos - Proprios\Bot-Discord\bot-jhon\imgs\verificar.gif"
+        if os.path.exists(file_path):
+            file = discord.File(file_path, filename="verificar.gif")
             embed.set_thumbnail(url="attachment://verificar.gif")
             await interaction.response.send_message(embed=embed, file=file)
         else:
