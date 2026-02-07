@@ -51,7 +51,8 @@ class Payments(commands.Cog):
         embed = discord.Embed(
             title="Acabou os Pulerins?",
             description=(
-                "Não se preocupe, temos a solução! Por apenas **R$ 10,00** você pode adquirir até **P1000**.\n\n"
+                "Atenção <@&1097523878839980163>, não se preocupe, temos a solução!\n"
+                "Por apenas **R$ 10,00** você pode adquirir até **P1000**.\n\n"
                 "💎 **Entrega 100% Automática**\n"
                 "💳 **Pix, Cartão ou Boleto**\n"
                 "🔒 **Seguro via Mercado Pago**\n\n"
