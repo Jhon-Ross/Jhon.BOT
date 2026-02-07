@@ -34,7 +34,8 @@ class JhonBot(commands.Bot):
             'cogs.economy',
             'cogs.moderation',
             'cogs.store',
-            'cogs.tickets'
+            'cogs.tickets',
+            'cogs.payments'
         ]
 
         for ext in initial_extensions:
