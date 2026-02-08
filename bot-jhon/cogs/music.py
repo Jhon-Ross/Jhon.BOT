@@ -101,7 +101,9 @@ class Musica(commands.Cog):
             await interaction.response.send_message("❌ Você precisa estar em um canal de voz.", ephemeral=True)
             return
 
-        await interaction.response.defer() # YouTube pode demorar
+        # Garante que não foi respondido antes de deferir
+        if not interaction.response.is_done():
+            await interaction.response.defer() # YouTube pode demorar
 
         voice_channel = interaction.user.voice.channel
         
