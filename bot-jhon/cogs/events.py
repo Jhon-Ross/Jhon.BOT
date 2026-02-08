@@ -109,13 +109,17 @@ class Eventos(commands.Cog):
                 color=discord.Color.green()
             )
             
-            # Tenta usar imagem local 'welcome.gif', se não existir usa a padrão
+            # Tenta usar imagem local 'welcome.gif' de forma relativa (compatível com VPS e Local)
             file = None
-            file_path = r"e:\Projetos - Jhon Ross\Projetos - Proprios\Bot-Discord\bot-jhon\imgs\welcome.gif"
+            # Pega o diretório base onde o bot está rodando
+            base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            file_path = os.path.join(base_path, "imgs", "welcome.gif")
+            
             if os.path.exists(file_path):
                 file = discord.File(file_path, filename="welcome.gif")
                 embed.set_image(url="attachment://welcome.gif")
             else:
+                # Fallback se não encontrar a imagem local
                 embed.set_image(url="https://media.discordapp.net/attachments/1310617769326153738/1310617942441852928/blitz-crank-league-of-legends.gif")
 
             embed.set_thumbnail(url=member.display_avatar.url)

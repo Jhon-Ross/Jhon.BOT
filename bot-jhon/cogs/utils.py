@@ -115,9 +115,11 @@ class Utilitarios(commands.Cog):
         )
         embed.set_footer(text="Esperamos que se divirta muito por aqui. 😊")
         
-        # Tenta usar imagem local 'verificar.gif', se não existir usa a padrão
+        # Tenta usar imagem local 'verificar.gif' de forma relativa
         file = None
-        file_path = r"e:\Projetos - Jhon Ross\Projetos - Proprios\Bot-Discord\bot-jhon\imgs\verificar.gif"
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        file_path = os.path.join(base_path, "imgs", "verificar.gif")
+        
         if os.path.exists(file_path):
             file = discord.File(file_path, filename="verificar.gif")
             embed.set_image(url="attachment://verificar.gif")
@@ -161,7 +163,9 @@ class Utilitarios(commands.Cog):
         embed.set_footer(text="Leia com atenção para uma boa convivência! 😊")
         
         # Tenta usar a imagem de verificação como thumbnail para dar um estilo
-        file_path = r"e:\Projetos - Jhon Ross\Projetos - Proprios\Bot-Discord\bot-jhon\imgs\verificar.gif"
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        file_path = os.path.join(base_path, "imgs", "verificar.gif")
+        
         if os.path.exists(file_path):
             file = discord.File(file_path, filename="verificar.gif")
             embed.set_thumbnail(url="attachment://verificar.gif")

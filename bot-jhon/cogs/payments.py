@@ -61,8 +61,10 @@ class Payments(commands.Cog):
             color=0xFFD700 # Dourado
         )
         
-        # Configura imagem local
-        file_path = r"e:\Projetos - Jhon Ross\Projetos - Proprios\Bot-Discord\bot-jhon\imgs\pulerins.png"
+        # Configura imagem local de forma relativa
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        file_path = os.path.join(base_path, "imgs", "pulerins.png")
+        
         file = discord.File(file_path, filename="pulerins.png")
         embed.set_image(url="attachment://pulerins.png")
         
