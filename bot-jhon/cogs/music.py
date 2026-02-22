@@ -7,7 +7,6 @@ import os
 
 # Configurações do YT-DLP e FFMPEG
 ytdl_format_options = {
-    'format': 'best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
     'noplaylist': True,
@@ -58,16 +57,20 @@ class YTDLSource(discord.PCMVolumeTransformer):
     async def from_url(cls, url, *, loop=None, stream=False):
         loop = loop or asyncio.get_event_loop()
         def extract():
-            return ytdl.extract_info(url, download=not stream)
-        try:
-            data = await loop.run_in_executor(None, extract)
-        except Exception:
-            ytdl.params["format"] = "best"
-            data = await loop.run_in_executor(None, extract)
+            return ytdl.extract_info(url, download=False)
+        data = await loop.run_in_executor(None, extract)
         if 'entries' in data:
             data = data['entries'][0]
-        filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+        formats = data.get('formats') or []
+        audio_only = [f for f in formats if f.get('acodec') != 'none' and f.get('vcodec') == 'none']
+        if audio_only:
+            chosen = max(audio_only, key=lambda f: f.get('abr') or 0)
+        elif formats:
+            chosen = max(formats, key=lambda f: f.get('tbr') or 0)
+        else:
+            raise RuntimeError("Nenhum formato disponível para este vídeo.")
+        source_url = chosen.get('url') or data.get('url')
+        return cls(discord.FFmpegPCMAudio(source_url, **ffmpeg_options), data=data)
 
 class Musica(commands.Cog):
     def __init__(self, bot):
