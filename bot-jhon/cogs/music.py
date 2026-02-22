@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import yt_dlp
 import asyncio
+import os
 
 # Configurações do YT-DLP e FFMPEG
 ytdl_format_options = {
@@ -23,6 +24,12 @@ ytdl_format_options = {
         }
     }
 }
+
+# Usa cookies do navegador, se o arquivo existir (ajuda em erros de "Sign in to confirm")
+base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+cookies_path = os.path.join(base_path, "cookies.txt")
+if os.path.exists(cookies_path):
+    ytdl_format_options["cookiefile"] = cookies_path
 
 ffmpeg_options = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',

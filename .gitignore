@@ -19,6 +19,9 @@ bot-jhon/.env
 errors.log
 bot-jhon/errors.log
 
+# yt-dlp cookies (YouTube)
+bot-jhon/cookies.txt
+
 # Binaries
 ffmpeg.exe
 bot-jhon/ffmpeg.exe
