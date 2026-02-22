@@ -7,7 +7,7 @@ import os
 
 # Configurações do YT-DLP e FFMPEG
 ytdl_format_options = {
-    'format': 'bestaudio/best',
+    'format': 'best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
     'noplaylist': True,
@@ -61,13 +61,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
             return ytdl.extract_info(url, download=not stream)
         try:
             data = await loop.run_in_executor(None, extract)
-        except yt_dlp.utils.DownloadError:
-            original_format = ytdl.params.get("format")
+        except Exception:
             ytdl.params["format"] = "best"
-            try:
-                data = await loop.run_in_executor(None, extract)
-            finally:
-                ytdl.params["format"] = original_format
+            data = await loop.run_in_executor(None, extract)
         if 'entries' in data:
             data = data['entries'][0]
         filename = data['url'] if stream else ytdl.prepare_filename(data)
