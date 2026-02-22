@@ -26,10 +26,19 @@ ytdl_format_options = {
 }
 
 # Usa cookies do navegador, se o arquivo existir (ajuda em erros de "Sign in to confirm")
-base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-cookies_path = os.path.join(base_path, "cookies.txt")
-if os.path.exists(cookies_path):
-    ytdl_format_options["cookiefile"] = cookies_path
+# Suporta duas localizações:
+# 1) bot-jhon/cookies.txt
+# 2) cookies.txt na raiz do projeto (ao lado do discloud.config)
+bot_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+project_root = os.path.dirname(bot_path)
+possible_cookies = [
+    os.path.join(bot_path, "cookies.txt"),
+    os.path.join(project_root, "cookies.txt"),
+]
+for cpath in possible_cookies:
+    if os.path.exists(cpath):
+        ytdl_format_options["cookiefile"] = cpath
+        break
 
 ffmpeg_options = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
